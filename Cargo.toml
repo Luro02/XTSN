@@ -17,4 +17,4 @@ version = "1"
 features = ["i128"]
 
 [build-dependencies]
-cc = "*"
+cc = "1.0.26"
