@@ -3,6 +3,9 @@ name = "xtsn"
 version = "0.1.0"
 authors = ["Luro02 <luro02@users.noreply.github.com>"]
 edition = "2018"
+description = "AES-XTS(N) ported to Rust"
+license = "MIT"
+repository = "https://github.com/Luro02/XTSN"
 
 [dependencies]
 rust-crypto = "^0.2"
