@@ -30,22 +30,36 @@ TODO:
     - speed comparison?!
     - rework the error messages...
 */
-#[macro_use] extern crate log;
-extern crate crypto;
-extern crate hex;
-extern crate byteorder;
+#[macro_use]
+extern crate log;
+use crypto;
+use hex;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 use crypto::aes;
 use crypto::buffer;
-use std::iter::Iterator;
 use std::io::Cursor;
-
-
+use std::iter::Iterator;
 
 extern "C" {
-    fn aes_xtsn_encrypt(buffer: *mut u8, len: u64, key: *mut u8, tweakin: *mut u8, sectoroffsethi: u64, sectoroffsetlo: u64, sector_size: u32);
-    fn aes_xtsn_decrypt(buffer: *mut u8, len: u64, key: *mut u8, tweakin: *mut u8, sectoroffsethi: u64, sectoroffsetlo: u64, sector_size: u32);
+    fn aes_xtsn_encrypt(
+        buffer: *mut u8,
+        len: u64,
+        key: *mut u8,
+        tweakin: *mut u8,
+        sectoroffsethi: u64,
+        sectoroffsetlo: u64,
+        sector_size: u32,
+    );
+    fn aes_xtsn_decrypt(
+        buffer: *mut u8,
+        len: u64,
+        key: *mut u8,
+        tweakin: *mut u8,
+        sectoroffsethi: u64,
+        sectoroffsetlo: u64,
+        sector_size: u32,
+    );
 }
 
 /// This structure is the C-Version of the XTSN decryptor
@@ -54,7 +68,6 @@ pub struct CXTSN {
     crypt: [u8; 0x10], // contains the key used for decrypting
     tweak: [u8; 0x10], // contains the key used for encrypting
 }
-
 
 impl CXTSN {
     /// initializes a new Cryptor
@@ -72,7 +85,10 @@ impl CXTSN {
             Ok(res) => res,
             Err(err) => return Err(format!("[l{:03}] Error decoding tweak: {}", line!(), err)),
         };
-        debug!("Initialized XTSN struct with the following keys: tcrypt: {:?} and ttweak {:?} ", &tcrypt, &ttweak);
+        debug!(
+            "Initialized XTSN struct with the following keys: tcrypt: {:?} and ttweak {:?} ",
+            &tcrypt, &ttweak
+        );
         Ok(Self {
             // https://stackoverflow.com/a/29570662/7766117
             crypt: {
@@ -99,7 +115,7 @@ impl CXTSN {
     /// # Example
     ///
     /// ```
-    /// extern crate XTSN;
+    /// extern crate xtsn;
     ///
     /// fn main() {
     ///     let mut data = b"Hello XTSN".to_vec();
@@ -107,7 +123,7 @@ impl CXTSN {
     ///     while data.len() != 0x200 {
     ///         data.push(0);
     ///     }
-    ///     let xts = match XTSN::CXTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    ///     let xts = match xtsn::CXTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
     ///                                     "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") {
     ///         Ok(res) => res,
     ///         Err(e) => panic!(e),
@@ -132,7 +148,7 @@ impl CXTSN {
                 tweak.as_mut_ptr(),
                 (sector_off as u64).wrapping_shr(64) & 0xFFFFFFFFFFFFFFFF,
                 (sector_off as u64) & 0xFFFFFFFFFFFFFFFF,
-                0x200
+                0x200,
             );
         }
         Ok(result)
@@ -147,7 +163,7 @@ impl CXTSN {
     /// # Example
     ///
     /// ```
-    /// extern crate XTSN;
+    /// extern crate xtsn;
     ///
     /// fn main() {
     ///     let mut data = b"Hello XTSN".to_vec();
@@ -155,7 +171,7 @@ impl CXTSN {
     ///     while data.len() != 0x200 {
     ///         data.push(0);
     ///     }
-    ///     let xts = match XTSN::CXTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    ///     let xts = match xtsn::CXTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
     ///                                      "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") {
     ///         Ok(res) => res,
     ///         Err(e) => panic!(e),
@@ -180,13 +196,13 @@ impl CXTSN {
                 tweak.as_mut_ptr(),
                 (sector_off as u64).wrapping_shr(64) & 0xFFFFFFFFFFFFFFFF,
                 (sector_off as u64) & 0xFFFFFFFFFFFFFFFF,
-                0x200
+                0x200,
             );
         }
         Ok(result)
     }
 
-    fn pack(data: u128) -> Result<Vec<u8>, String> {
+    pub fn pack(data: u128) -> Result<Vec<u8>, String> {
         let mut result: Vec<u8> = Vec::new();
         match result.write_u128::<LE>(data) {
             Ok(res) => res,
@@ -199,7 +215,7 @@ impl CXTSN {
         Ok(result)
     }
 
-    fn unpack(data: Vec<u8>) -> Result<u128, String> {
+    pub fn unpack(data: Vec<u8>) -> Result<u128, String> {
         let mut rdr = Cursor::new(data);
         let result = rdr.read_u128::<LE>();
         match result {
@@ -208,7 +224,7 @@ impl CXTSN {
         }
     }
 
-    fn xor(s1: &Vec<u8>, s2: &Vec<u8>) -> Vec<u8> {
+    pub fn xor(s1: &Vec<u8>, s2: &Vec<u8>) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
         for (a, b) in Iterator::zip(s1.iter(), s2.iter()) {
             result.push(a ^ b);
@@ -241,7 +257,10 @@ impl XTSN {
             Ok(res) => res,
             Err(err) => return Err(format!("[l{:03}] Error decoding tweak: {}", line!(), err)),
         };
-        debug!("Initialized XTSN struct with the following keys: tcrypt: {:?} and ttweak {:?} ", &tcrypt, &ttweak);
+        debug!(
+            "Initialized XTSN struct with the following keys: tcrypt: {:?} and ttweak {:?} ",
+            &tcrypt, &ttweak
+        );
         Ok(Self {
             // https://stackoverflow.com/a/29570662/7766117
             crypt: {
@@ -268,7 +287,7 @@ impl XTSN {
     /// # Example
     ///
     /// ```
-    /// extern crate XTSN;
+    /// extern crate xtsn;
     ///
     /// fn main() {
     ///     let mut data = b"Hello XTSN".to_vec();
@@ -276,12 +295,12 @@ impl XTSN {
     ///     while data.len() != 0x200 {
     ///         data.push(0);
     ///     }
-    ///     let xts = match XTSN::CXTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    ///     let xts = match xtsn::XTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
     ///                                     "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") {
     ///         Ok(res) => res,
     ///         Err(e) => panic!(e),
     ///     };
-    ///     let ret = match xts.encrypt(data, 0) {
+    ///     let ret = match xts.decrypt(data, 0) {
     ///         Ok(res) => res,
     ///         Err(e) => panic!(e),
     ///     };
@@ -306,11 +325,11 @@ impl XTSN {
                 let mut c_enc = aes::ecb_encryptor(
                     aes::KeySize::KeySize128,
                     &self.tweak,
-                    crypto::blockmodes::NoPadding // could also be NoPadding?!
+                    crypto::blockmodes::NoPadding, // could also be NoPadding?!
                 );
                 match c_enc.encrypt(&mut read_buffer, &mut write_buffer, true) {
                     Err(e) => return Err(format!("[l{:03}] Encrypting failed: {:?}", line!(), e)),
-                    _ => {},
+                    _ => {}
                 };
                 tbuffer.to_vec()
             };
@@ -318,7 +337,7 @@ impl XTSN {
                 let off = i * 0x200 + j * 16;
                 let mut blk = {
                     let mut tbuffer = [0u8; 16].to_vec();
-                    let mut tblk = Self::xor(&buffer[off..off+16].to_vec(), &tweak);
+                    let mut tblk = Self::xor(&buffer[off..off + 16].to_vec(), &tweak);
 
                     let mut read_buffer = buffer::RefReadBuffer::new(&mut tblk);
                     let mut write_buffer = buffer::RefWriteBuffer::new(&mut tbuffer);
@@ -326,11 +345,13 @@ impl XTSN {
                     let mut dec = aes::ecb_decryptor(
                         aes::KeySize::KeySize128,
                         &self.crypt,
-                        crypto::blockmodes::NoPadding
+                        crypto::blockmodes::NoPadding,
                     );
                     match dec.decrypt(&mut read_buffer, &mut write_buffer, true) {
-                        Err(e) => return Err(format!("[l{:03}] Decrypting failed: {:?}", line!(), e)),
-                        _ => {},
+                        Err(e) => {
+                            return Err(format!("[l{:03}] Decrypting failed: {:?}", line!(), e))
+                        }
+                        _ => {}
                     };
                     Self::xor(&tbuffer, &tweak)
                 };
@@ -373,7 +394,7 @@ impl XTSN {
     /// # Example
     ///
     /// ```
-    /// extern crate XTSN;
+    /// extern crate xtsn;
     ///
     /// fn main() {
     ///     let mut data = b"Hello XTSN".to_vec();
@@ -381,7 +402,7 @@ impl XTSN {
     ///     while data.len() != 0x200 {
     ///         data.push(0);
     ///     }
-    ///     let xts = match XTSN::XTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    ///     let xts = match xtsn::XTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
     ///                                     "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") {
     ///         Ok(res) => res,
     ///         Err(e) => panic!(e),
@@ -410,11 +431,11 @@ impl XTSN {
                 let mut c_enc = aes::ecb_encryptor(
                     aes::KeySize::KeySize128,
                     &self.crypt,
-                    crypto::blockmodes::NoPadding
+                    crypto::blockmodes::NoPadding,
                 );
                 match c_enc.encrypt(&mut read_buffer, &mut write_buffer, true) {
                     Err(e) => return Err(format!("[l{:03}] Encrypting failed: {:?}", line!(), e)),
-                    _ => {},
+                    _ => {}
                 };
                 tbuffer.to_vec()
             };
@@ -422,7 +443,7 @@ impl XTSN {
                 let off = i * 0x200 + j * 16;
                 let mut blk = {
                     let mut tbuffer = [0u8; 16].to_vec();
-                    let mut tblk = Self::xor(&buffer[off..off+16].to_vec(), &tweak);
+                    let mut tblk = Self::xor(&buffer[off..off + 16].to_vec(), &tweak);
 
                     let mut read_buffer = buffer::RefReadBuffer::new(&mut tblk);
                     let mut write_buffer = buffer::RefWriteBuffer::new(&mut tbuffer);
@@ -430,11 +451,13 @@ impl XTSN {
                     let mut c_dec = aes::ecb_decryptor(
                         aes::KeySize::KeySize128,
                         &self.tweak,
-                        crypto::blockmodes::NoPadding
+                        crypto::blockmodes::NoPadding,
                     );
                     match c_dec.decrypt(&mut read_buffer, &mut write_buffer, true) {
-                        Err(e) => return Err(format!("[l{:03}] Decrypting failed: {:?}", line!(), e)),
-                        _ => {},
+                        Err(e) => {
+                            return Err(format!("[l{:03}] Decrypting failed: {:?}", line!(), e))
+                        }
+                        _ => {}
                     };
                     Self::xor(&tbuffer, &tweak)
                 };
@@ -467,7 +490,7 @@ impl XTSN {
         Ok(result)
     }
 
-    fn pack(data: u128) -> Result<Vec<u8>, String> {
+    pub fn pack(data: u128) -> Result<Vec<u8>, String> {
         let mut result: Vec<u8> = Vec::new();
         match result.write_u128::<LE>(data) {
             Ok(res) => res,
@@ -480,7 +503,7 @@ impl XTSN {
         Ok(result)
     }
 
-    fn unpack(data: Vec<u8>) -> Result<u128, String> {
+    pub fn unpack(data: Vec<u8>) -> Result<u128, String> {
         let mut rdr = Cursor::new(data);
         let result = rdr.read_u128::<LE>();
         match result {
@@ -489,7 +512,7 @@ impl XTSN {
         }
     }
 
-    fn xor(s1: &Vec<u8>, s2: &Vec<u8>) -> Vec<u8> {
+    pub fn xor(s1: &Vec<u8>, s2: &Vec<u8>) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
         for (a, b) in Iterator::zip(s1.iter(), s2.iter()) {
             result.push(a ^ b);
@@ -498,14 +521,16 @@ impl XTSN {
     }
 }
 
-/*
 #[cfg(test)]
 mod test {
-    use super::{XTSN, CXTSN};
+    use super::CXTSN;
 
     #[test]
     fn test_c_encrypt() {
-        let xts = match CXTSN::new("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") {
+        let xts = match CXTSN::new(
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        ) {
             Ok(res) => res,
             Err(err) => panic!("Error occured {}", err),
         };
@@ -521,4 +546,3 @@ mod test {
         // assert_eq!();
     }
 }
-*/
